@@ -1,0 +1,123 @@
+<html>
+    <head>
+        <title>Infectious Disease Model</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+    </head>
+    <body>
+        <h3>Infectious Disease Model</h3>
+        <label for="noPpl">How many people would you like to have?</label>
+        <input type="number" id="noPpl"><br />
+        <label for="gridLim">How big should the square be on each side?</label>
+        <input type="number" id="gridLim"><br />
+        <label for="stepSize">How big would you like each person's step to be?</label>
+        <input type="number" id="stepSize"><br />
+        <label for="infProd">What probabaility would you like there to be for being infected?</label>
+        <input type="number" id="infProd"><br />
+        <label for="infDist">How close to infectious people need to be to infect others?</label>
+        <input type="number" id="infDist"><br />
+        <label for="delay">How long would you like between each step?</label>
+        <input type="number" id="delay"><br />
+        <button onClick="loadPlot()">Click me</button><br />
+        <canvas id="plot" style="width:100%;max-width:1200px"></canvas>
+        <script>
+            async function loadPlot() {
+                document.querySelector('button').remove();
+                document.querySelectorAll('input').forEach(input => input.disabled = true);
+                const noPpl = parseInt(document.querySelector('#noPpl').value);
+                const gridLim = parseInt(document.querySelector('#gridLim').value);
+                const stepSize = parseFloat(document.querySelector('#stepSize').value);
+                const infProd = parseFloat(document.querySelector('#infProd').value);
+                const infDist = parseFloat(document.querySelector('#infDist').value);
+                const delay = parseFloat(document.querySelector('#delay').value);
+                let pplPos = [];
+                let infPos = [];
+                for (let i = 0; i < noPpl; i++) {
+                    let randX = Math.random() * gridLim;
+                    let randY = Math.random() * gridLim;
+                    pplPos.push({x: randX, y: randY});
+                }
+                let firstInfIndex = Math.floor(Math.random() * noPpl);
+                infPos.push(pplPos[firstInfIndex]);
+                pplPos.splice(firstInfIndex, 1);
+
+                var plot = new Chart("plot", {
+                  type: "scatter",
+                  data: {
+                    datasets: [
+                        {
+                            pointRadius: 4,
+                            pointBackgroundColor: "black",
+                            data: pplPos
+                        },
+                        {
+                            pointRadius: 4,
+                            pointBackgroundColor: "red",
+                            data: infPos
+                        }
+                    ]
+                  },
+                  options: {
+                    legend: {display: false},
+                    scales: {
+                      xAxes: [{ticks: {min: 0, max:gridLim}}],
+                      yAxes: [{ticks: {min: 0, max:gridLim}}],
+                    },
+                    title: {
+                        display: true,
+                        text: ''
+                    },
+                    tooltips: {enabled: false},
+                    hover: {mode: null}
+                  }
+                });
+                await wait(1000);
+                let steps = 0;
+                while (pplPos.length > 0) {
+                    await wait(delay*1000);
+                    for (let i = 0; i < pplPos.length; i++) {
+                        pplPos[i] = step(pplPos[i], stepSize, gridLim);
+                    }
+                    for (let j = 0; j < infPos.length; j++) {
+                        infPos[j] = step(infPos[j], stepSize, gridLim);
+                    }
+                    for (let j = 0; j < infPos.length; j++) {
+                        for (let i = 0; i < pplPos.length; i++) {
+                            let dist = (infPos[j].x - pplPos[i].x)**2 + (infPos[j].y - pplPos[i].y)**2;
+                            if (dist <= infDist && Math.random() <= infProd) {
+                                infPos.push(pplPos.splice(i, 1)[0]);
+                            }
+                        }
+                    }
+                    plot.data.datasets[0].data = pplPos;
+                    plot.data.datasets[1].data = infPos;
+                    plot.options.title.text = '% of infected: ' + ((infPos.length/noPpl)*100).toFixed(2);
+                    plot.update();
+                    steps += 1;
+                }
+                plot.options.title.text = 'It took ' + steps + ' steps for ' + noPpl + ' people to become infected.';
+            }
+
+            function step(person, stepSize, gridLim) {
+                let stepX = Math.random() * stepSize;
+                stepX = Math.round(Math.random()) ? stepX : -1 * stepX;
+                let newX = person.x + stepX;
+                let stepY = Math.random() * stepSize;
+                stepY = Math.round(Math.random()) ? stepY : -1 * stepY;
+                let newY = person.y + stepY;
+                if (newX > gridLim) {
+                    newX = 2 * gridLim - newX;
+                } else if (newX < 0) {
+                    newX = -1 * newX;
+                }
+                if (newY > gridLim) {
+                    newY = 2 * gridLim - newY;
+                } else if (newY < 0) {
+                    newY = -1 * newY;
+                }
+                return {x: newX, y: newY};
+            }
+
+            const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        </script>
+    </body>
+</html>
